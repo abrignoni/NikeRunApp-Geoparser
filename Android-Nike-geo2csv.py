@@ -13,7 +13,7 @@ where activity_metric_group.mg_metric_type = 'latitude'
 order by activity_metric_group.mg_activity_id 
 ''')
 
-#save the run numbers that have lat and long to use for selectio in the view portion
+#save the run numbers, by inserting in a temp table, that have lat and long to be used for selection later in the view portion 
 rows = cursor.fetchall()
 for row in rows:
 	runs =row[4]
@@ -28,7 +28,7 @@ for row in rows:
 	cursor.execute('''
 	drop view if exists sub1;
 	''')
-	
+	#create a view that aggregates all data from the two pertinent tables
 	cursor.execute('''
     create view sub1 
 	as
@@ -36,7 +36,7 @@ for row in rows:
 	where activity_raw_metric.rm_metric_group_id = activity_metric_group._id and activity_metric_group.mg_activity_id = temp.run 
 	order by activity_raw_metric.rm_start_utc_millis; 
 	''')
-
+	#select the first row of all runs. Use the time and date for the csv filename.
 	cursor.execute('''
 	select datetime(lat.rm_start_utc_millis / 1000, 'unixepoch', 'localtime') as day, lat.rm_value as latitude, long.rm_value as longitude
 	from sub1 as lat left join sub1 as long on lat.rm_start_utc_millis = long.rm_start_utc_millis
@@ -48,7 +48,8 @@ for row in rows:
 	for row in rows:
 		rundate = row[0]
 		titlefile = rundate.replace(":", "-")
-		
+
+	#Self join query of the view to aggregate lat and long in one row per corresponding point in time. Write csv file. 	
 	cursor.execute('''
 	select datetime(lat.rm_start_utc_millis / 1000, 'unixepoch', 'localtime') as day, lat.rm_value as latitude, long.rm_value as longitude
 	from sub1 as lat left join sub1 as long on lat.rm_start_utc_millis = long.rm_start_utc_millis
